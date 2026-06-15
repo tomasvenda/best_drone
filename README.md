@@ -54,7 +54,7 @@ Look for the IP on the same subnet as the OptiTrack server (typically `192.168.1
 
 ```bash
 sudo docker run --rm --network host \
-  -e SERVER_IP=192.168.1.130 \
+  -e SERVER_IP=192.168.1.129 \
   -e LOCAL_IP=<YOUR_IP> \
   -e RIGID_BODY_IDS=1,4 \
   vvipu/mocap4r2_optitrack
@@ -65,7 +65,7 @@ Replace `<YOUR_IP>` with the IP you found in Step 2.
 **Example:**
 ```bash
 sudo docker run --rm --network host \
-  -e SERVER_IP=192.168.1.130 \
+  -e SERVER_IP=192.168.1.129 \
   -e LOCAL_IP=192.168.1.194 \
   -e RIGID_BODY_IDS=1,4 \
   vvipu/mocap4r2_optitrack
@@ -74,7 +74,7 @@ sudo docker run --rm --network host \
 You should see output like:
 ```
 Starting OptiTrack driver with:
-  SERVER_IP=192.168.1.130
+  SERVER_IP=192.168.1.129
   LOCAL_IP=192.168.1.194
   CONNECTION_TYPE=Unicast
 ...
@@ -118,13 +118,50 @@ ros2 topic echo /rigid_body_1/pose
 
 Press `Ctrl+C` in the terminal where the container is running.
 
+## Drone communication
+
+Run the following script to start communication with the drone:
+
+```bash
+python3 ros2_joy_to_crsf_v2.py
+```
+
+This node publishes altitude control signals to the drone. The drone receives direct control signals in the `1000` to `2000` range, while this node takes inputs in the `-1` to `1` range. For roll, pitch, and yaw, `0` is the center position. For throttle, there is no center position, so the throttle signal should start from `-1`.
+
+If Ubuntu reports that the serial port permission is denied when running this Python script, add your user to the `dialout` group:
+
+```bash
+sudo usermod -a -G dialout $USER
+```
+
+Then log out of Ubuntu and log back in for the permission change to take effect.
+
+### Test Simulink publisher with `joy_test.slx`
+
+Before trying `uas_main_ros2`, first run `joy_test.slx`. This test checks whether the Simulink ROS 2 publisher can communicate with the joy-to-CRSF node.
+
+After running `joy_test.slx`, wait a few seconds. The output from the joy-to-CRSF node should start changing if the communication is working.
+
+If the drone is powered on while testing `joy_test.slx`, make sure the drone is physically tethered before running the test to avoid uncontrolled motion.
+
+### ROS 2 nodes in `uas_main_ros2`
+
+In `uas_main_ros2`, the EX7 block diagram already contains ROS 2 nodes that can be used directly. The subscriber outputs position and attitude information, and the publisher outputs the drone altitude control signal. The position controller between them needs to be designed and implemented.
+
+Under the altitude publisher, two variables must be assigned. They are defined in the last two lines of `uas_parameters.m`:
+
+```matlab
+axes_msg = zeros(1, 124);
+button_msg = zeros(1, 124);
+```
+
 ## Configuration
 
 All configuration is done through environment variables passed with `-e`:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `SERVER_IP` | `192.168.1.130` | IP address of the OptiTrack Motive PC |
+| `SERVER_IP` | `192.168.1.129` | IP address of the OptiTrack Motive PC |
 | `LOCAL_IP` | `0.0.0.0` | IP address of your computer on the OptiTrack network |
 | `CONNECTION_TYPE` | `Unicast` | `Unicast` or `Multicast` |
 | `RIGID_BODY_IDS` | `` | Comma-separated list of rigid body IDs to publish individually (e.g. `1,4`) |
@@ -133,7 +170,7 @@ All configuration is done through environment variables passed with `-e`:
 
 ### OptiTrack configuration
 
-![OptiTrack configuration](imgs/config.jpeg)
+![OptiTrack configuration](imgs/config.jpeg)(Local Interface is 192.168.1.129 now)
 
 OptiTrack configuration to work with the current setup. In this picture the up-axis is set to **Y**, but you may set it to **Z** depending on your Motive/project preferences.
 
@@ -188,7 +225,7 @@ source install/setup.bash
 ### "Connection refused" or "Cannot connect to Optitrack"
 
 - Check that Motive is running on the OptiTrack PC
-- Check that your computer is on the same network (ping the server: `ping 192.168.1.130`)
+- Check that your computer is on the same network (ping the server: `ping 192.168.1.129`)
 - Make sure the `SERVER_IP` and `LOCAL_IP` are correct
 
 ### "Docker permission denied"
@@ -207,7 +244,7 @@ docker pull vvipu/mocap4r2_optitrack
 
 ## Lab defaults
 
-- **OptiTrack Server IP**: `192.168.1.130`
+- **OptiTrack Server IP**: `192.168.1.129`
 - **Motive version**: 3.0.3.1
 - **NatNet version**: 4.0.0.0
 - **Frame rate**: 120 Hz
