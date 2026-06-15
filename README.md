@@ -1,93 +1,223 @@
-# optitrack_ros2_humble
+# OptiTrack ROS 2 Driver (Docker)
 
+Pre-built Docker image for streaming OptiTrack motion capture data into ROS 2 Humble topics.
 
+## What this does
 
-## Getting started
+Runs the [mocap4r2 OptiTrack driver](https://github.com/MOCAP4ROS2-Project/mocap4ros2_optitrack) inside a Docker container. Once started, it connects to the OptiTrack Motive software and publishes data on two ROS 2 topics:
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+| Topic | Message type | Content |
+|-------|-------------|---------|
+/rigid_bodies` | `mocap4r2_msgs/msg/RigidBodies` | Pose (position + orientation) of each rigid body |
+| `/rigid_body_<id>/pose` | `geometry_msgs/msg/PoseStamped` | Individual rigid body pose for a given ID (created when `RIGID_BODY_IDS` is set) |
+| `/markers` | `mocap4r2_msgs/msg/Markers` | Individual marker positions |
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Prerequisites
 
-## Add your files
+- **Docker** installed on your machine ([install guide](https://docs.docker.com/engine/install/ubuntu/))
+- **ROS 2 Humble** installed on your machine ([install guide](https://docs.ros.org/en/humble/Installation/Ubuntu-Install-Debs.html))
+- Your computer must be on the **same network** as the OptiTrack system (connected via Ethernet to the OptiTrack switch)
+- Connect your laptop to the Wi-Fi network `asta_optitrack` using the password `asta2020` (this network is used to reach the OptiTrack Motive PC).
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+### Install Docker (if you don't have it)
 
+```bash
+# Install Docker
+sudo apt-get update
+sudo apt-get install -y docker.io
+
+# Allow running Docker without sudo
+sudo usermod -aG docker $USER
+
+# Log out and log back in for the group change to take effect
 ```
-cd existing_repo
-git remote add origin https://gitlab.gbar.dtu.dk/Courses/optitrack_ros2_humble.git
-git branch -M main
-git push -uf origin main
+
+## Quick start
+
+### Step 1: Pull the Docker image
+
+```bash
+sudo docker pull vvipu/mocap4r2_optitrack
 ```
 
-## Integrate with your tools
+### Step 2: Find your computer's IP address
 
-* [Set up project integrations](https://gitlab.gbar.dtu.dk/Courses/optitrack_ros2_humble/-/settings/integrations)
+Your computer needs to be connected to the OptiTrack network. Find your IP on that network:
 
-## Collaborate with your team
+```bash
+ip addr show
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+Look for the IP on the same subnet as the OptiTrack server (typically `192.168.1.x`).
 
-## Test and Deploy
+### Step 3: Run the container
 
-Use the built-in continuous integration in GitLab.
+```bash
+sudo docker run --rm --network host \
+  -e SERVER_IP=192.168.1.130 \
+  -e LOCAL_IP=<YOUR_IP> \
+  -e RIGID_BODY_IDS=1,4 \
+  vvipu/mocap4r2_optitrack
+```
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Replace `<YOUR_IP>` with the IP you found in Step 2.
 
-***
+**Example:**
+```bash
+sudo docker run --rm --network host \
+  -e SERVER_IP=192.168.1.130 \
+  -e LOCAL_IP=192.168.1.194 \
+  -e RIGID_BODY_IDS=1,4 \
+  vvipu/mocap4r2_optitrack
+```
 
-# Editing this README
+You should see output like:
+```
+Starting OptiTrack driver with:
+  SERVER_IP=192.168.1.130
+  LOCAL_IP=192.168.1.194
+  CONNECTION_TYPE=Unicast
+...
+[INFO] ... connected!
+[INFO] ... Application: Motive (ver. 3.0.3.1)
+[INFO] ... Configured!
+Activating node...
+Node activated — publishing on /rigid_bodies and /markers
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+### Step 4: Read the data
 
-## Suggestions for a good README
+Open a **new terminal** and source your ROS 2 workspace that has `mocap4r2_msgs`:
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+```bash
+source /opt/ros/humble/setup.bash
+source ~/mocap4r2_ws/install/setup.bash
+```
 
-## Name
-Choose a self-explaining name for your project.
+Then read the rigid body poses:
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+```bash
+ros2 topic echo /rigid_bodies
+```
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Or read individual markers:
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+```bash
+ros2 topic echo /markers
+```
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+If you provided `RIGID_BODY_IDS` when starting the container, the driver will create individual pose topics for each rigid body ID in the form `rigid_body_<id>/pose`.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+Example: to echo the pose for rigid body `1`:
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+```bash
+ros2 topic echo /rigid_body_1/pose
+```
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+### Step 5: Stop the container
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+Press `Ctrl+C` in the terminal where the container is running.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+## Configuration
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+All configuration is done through environment variables passed with `-e`:
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVER_IP` | `192.168.1.130` | IP address of the OptiTrack Motive PC |
+| `LOCAL_IP` | `0.0.0.0` | IP address of your computer on the OptiTrack network |
+| `CONNECTION_TYPE` | `Unicast` | `Unicast` or `Multicast` |
+| `RIGID_BODY_IDS` | `` | Comma-separated list of rigid body IDs to publish individually (e.g. `1,4`) |
 
-## License
-For open source projects, say how it is licensed.
+## Images
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+### OptiTrack configuration
+
+![OptiTrack configuration](imgs/config.jpeg)
+
+OptiTrack configuration to work with the current setup. In this picture the up-axis is set to **Y**, but you may set it to **Z** depending on your Motive/project preferences.
+
+### Rigid body example
+
+![Rigid body example](imgs/rigid_body.jpeg)
+
+Define a rigid body and give it an ID that does *not* match other existing IDs in the scene; that ID is the one you can pass via the `RIGID_BODY_IDS` environment variable (comma-separated) so the driver will create the per-body topic `rigid_body_<id>/pose` for it.
+
+## Troubleshooting
+
+### Verify data inside the container
+
+If you're not sure whether the problem is on the host or inside the container, you can open a shell inside the running container to check directly. First, find the container ID:
+
+```bash
+docker ps
+```
+
+Then open a bash session inside it:
+
+```bash
+docker exec -it <CONTAINER_ID> bash
+```
+
+Once inside, source the workspace and check the topics:
+
+```bash
+source /opt/ros/humble/setup.bash
+source /ws/install/setup.bash
+ros2 topic list
+ros2 topic echo /rigid_bodies --once
+```
+
+If you see data here but not on your host, the issue is DDS communication between the container and your machine (make sure you used `--network host` when starting the container).
+
+Press `Ctrl+D` to exit the container shell.
+
+### "Cannot see topics or messages"
+
+Make sure you have `mocap4r2_msgs` built and sourced on your host machine. Without the message definitions, `ros2 topic echo` cannot decode the messages. If you don't have the workspace:
+
+```bash
+mkdir -p ~/mocap4r2_ws/src && cd ~/mocap4r2_ws/src
+git clone https://github.com/MOCAP4ROS2-Project/mocap4r2_msgs.git
+cd ~/mocap4r2_ws
+source /opt/ros/humble/setup.bash
+colcon build --packages-select mocap4r2_msgs
+source install/setup.bash
+```
+
+### "Connection refused" or "Cannot connect to Optitrack"
+
+- Check that Motive is running on the OptiTrack PC
+- Check that your computer is on the same network (ping the server: `ping 192.168.1.130`)
+- Make sure the `SERVER_IP` and `LOCAL_IP` are correct
+
+### "Docker permission denied"
+
+```bash
+sudo usermod -aG docker $USER
+# Then log out and log back in
+```
+
+### "Image not found" when pulling
+
+Make sure you typed the image name correctly:
+```bash
+docker pull vvipu/mocap4r2_optitrack
+```
+
+## Lab defaults
+
+- **OptiTrack Server IP**: `192.168.1.130`
+- **Motive version**: 3.0.3.1
+- **NatNet version**: 4.0.0.0
+- **Frame rate**: 120 Hz
+
+## Building the image locally (maintainers only)
+
+If you need to rebuild the image:
+
+```bash
+cd ~/mocap4r2_ws
+docker build -t vvipu/mocap4r2_optitrack .
+docker push vvipu/mocap4r2_optitrack
+```
