@@ -68,3 +68,14 @@ drag_coefficient = 0.47;
 reference_area = pi * 75e-3^2;
 axes_msg = zeros(1, 124);
 button_msg = zeros(1, 124);
+
+% safety limits
+
+roll_max = 20;      % deg
+pitch_max = 20;     % deg
+yaw_rate_max = 90;  % deg/sec
+altitude_max = 1;   % m
+speed_max = 0.5;    % m/s
+
+% position controller gains
+position;
