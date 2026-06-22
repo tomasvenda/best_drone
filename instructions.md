@@ -13,6 +13,7 @@ sudo docker run --rm --network host \
   -e SERVER_IP=192.168.1.129 \
   -e LOCAL_IP=192.168.1.134 \
   -e RIGID_BODY_IDS=76 \
+  -e ROS_DOMAIN_ID=76 \
   vvipu/mocap4r2_optitrack
 ```
 
@@ -23,6 +24,7 @@ sudo docker run --rm --network host \
   -e SERVER_IP=192.168.1.129 \
   -e LOCAL_IP=192.168.1.116 \
   -e RIGID_BODY_IDS=76 \
+  -e ROS_DOMAIN_ID=76 \
   vvipu/mocap4r2_optitrack
 ```
 

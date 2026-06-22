@@ -3,4 +3,4 @@ build/
 install/
 log/
 slprj/
-joy_test.slxc
+*.slxc
