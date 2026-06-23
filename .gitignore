@@ -4,3 +4,4 @@ install/
 log/
 slprj/
 *.slxc
+*.slx.original
